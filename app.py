@@ -56,7 +56,8 @@ if prompt := st.chat_input("How can I help you?"):
 
             for strategy in generation_strategies:
                 response = strategy(prompt)
-                if "provide the sources" not in response.text:
+                # If the response is grounded, we can break out of the loop
+                if len(response.candidates[0].grounding_metadata.grounding_supports) > 0:
                     break
 
     # Add assistant response to chat history
