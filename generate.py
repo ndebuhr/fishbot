@@ -3,7 +3,7 @@ import os
 import vertexai
 
 from google.auth import default
-from vertexai.preview.generative_models import GenerativeModel, SafetySetting, Tool
+from vertexai.preview.generative_models import GenerativeModel, Tool
 from vertexai.preview.generative_models import grounding
 
 DATASTORE_LOCATION = os.getenv("DATASTORE_LOCATION")
@@ -25,25 +25,6 @@ GENERATION_CONFIG = {
     "top_p": 0.95,
 }
 
-SAFETY_SETTINGS = [
-    SafetySetting(
-        category=SafetySetting.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-        threshold=SafetySetting.HarmBlockThreshold.OFF
-    ),
-    SafetySetting(
-        category=SafetySetting.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-        threshold=SafetySetting.HarmBlockThreshold.OFF
-    ),
-    SafetySetting(
-        category=SafetySetting.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-        threshold=SafetySetting.HarmBlockThreshold.OFF
-    ),
-    SafetySetting(
-        category=SafetySetting.HarmCategory.HARM_CATEGORY_HARASSMENT,
-        threshold=SafetySetting.HarmBlockThreshold.OFF
-    ),
-]
-
 vertexai.init()
 model = GenerativeModel(
     "gemini-1.5-flash-002",
@@ -57,22 +38,19 @@ chat = model.start_chat()
 def multiturn_generate(prompt):
     return chat.send_message(
         [prompt],
-        generation_config=GENERATION_CONFIG,
-        safety_settings=SAFETY_SETTINGS
+        generation_config=GENERATION_CONFIG
     )
 
 def singleturn_generate(prompt):
     singleturn_chat = model.start_chat()
     return singleturn_chat.send_message(
         [prompt],
-        generation_config=GENERATION_CONFIG,
-        safety_settings=SAFETY_SETTINGS
+        generation_config=GENERATION_CONFIG
     )
 
 def generic_generate(prompt):
     generic_chat = generic_model.start_chat()
     return generic_chat.send_message(
         [prompt],
-        generation_config=GENERATION_CONFIG,
-        safety_settings=SAFETY_SETTINGS
+        generation_config=GENERATION_CONFIG
     )
