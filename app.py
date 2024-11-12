@@ -1,5 +1,27 @@
-from generate import generic_generate, multiturn_generate, singleturn_generate
 import streamlit as st
+
+from generate import generic_generate, multiturn_generate, singleturn_generate
+from pexels import top_pexels_result
+
+IMAGE_CHECK_PROMPT = """
+Would an image be very helpful in answering this question? Answer only "yes" or "no".
+
+Question:
+{}
+
+Answer:
+{}
+"""
+
+IMAGE_QUERY_PROMPT = """
+What search term should be used to find an image related to this question/answer? Return only the single search term.
+
+Question:
+{}
+
+Answer:
+{}
+"""
 
 st.title('Tiered LLM Chat Interface')
 
@@ -40,6 +62,13 @@ if prompt := st.chat_input("How can I help you?"):
     # Add assistant response to chat history
     st.markdown(response.text)
     st.session_state.messages.append({"role": "assistant", "content": response.text})
+
+    # Check if the response could use an image
+    if "yes" in generic_generate(IMAGE_CHECK_PROMPT.format(prompt, response.text)).text.lower():
+        # Search for an image related to the user's question
+        query = generic_generate(IMAGE_QUERY_PROMPT.format(prompt, response.text)).text
+        top_result = top_pexels_result(query)
+        st.image(top_result["src"]["original"], caption=top_result["alt"])
 
 # Add a button to clear chat history
 if st.sidebar.button("Clear Chat History"):
