@@ -23,7 +23,12 @@ Answer:
 {}
 """
 
-st.title('Tiered LLM Chat Interface')
+st.set_page_config(
+    page_title="Fishbot",
+    page_icon="🐟",
+    layout="wide"
+)
+st.title('Fishbot')
 
 # Initialize chat history in session state if it doesn't exist
 if "messages" not in st.session_state:
