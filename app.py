@@ -30,7 +30,7 @@ DATASTORE_STATIC_HOST = os.getenv("DATASTORE_STATIC_HOST")
 
 st.set_page_config(
     page_title="Fishbot",
-    page_icon="🐟",
+    page_icon="🎣",
     layout="wide"
 )
 st.title('Fishbot')
