@@ -142,7 +142,7 @@ if __name__ == "__main__":
         page_icon="🎣",
         layout="wide"
     )
-    st.title('Fishbot')
+    st.title('Fishbot 🎣')
 
     # Initialize chat history
     if "messages" not in st.session_state:
