@@ -25,7 +25,9 @@
 ## Infrastructure
 
 The infrastructure for [fishbot.com](https://fishbot.com) includes:
-1. A Cloud Run service with "internal + load balancer" ingress
+1. A Cloud Run service with:
+    1. "Internal + load balancer" ingress
+    1. Custom 3600s HTTP request timeout (to reduce websocket-reconnection-related issues)
 1. An External Global Application Load Balancer spanning both the chatbot and static files (custom grounding source)
     1. Serverless Network Endpoint backend for the Cloud Run service
     1. Public backend bucket for the static files
