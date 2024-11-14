@@ -1,7 +1,9 @@
 import os
 import streamlit as st
+import uuid
 
 from generate import generic_generate, google_search_generate, multiturn_generate, singleturn_generate
+from reporting import log_to_bigquery
 from pexels import top_pexels_result
 
 IMAGE_CHECK_PROMPT = """
@@ -111,7 +113,7 @@ def generate_response(prompt):
 
     return response_with_sources, None
 
-def submit_prompt(prompt):
+def submit_prompt(prompt, session_id):
     with st.chat_message("user"):
         st.markdown(prompt)
     st.session_state.messages.append({
@@ -123,6 +125,7 @@ def submit_prompt(prompt):
     with st.chat_message("assistant"):
         with st.spinner("Thinking..."):
             response, image_result = generate_response(prompt)
+            log_to_bigquery(session_id, prompt, response, image_result)
 
     st.session_state.messages.append({
         "role": "assistant",
@@ -148,6 +151,10 @@ if __name__ == "__main__":
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
+    # Initialize session ID
+    if "session_id" not in st.session_state:
+        st.session_state.session_id = str(uuid.uuid4())
+
     # Suggested questions
     st.write("Get started with some suggested questions:")
     cols = st.columns(3)
@@ -159,7 +166,7 @@ if __name__ == "__main__":
             key=f"suggested_{i}",
             disabled=len(st.session_state.messages) > 0,
         ):
-            submit_prompt(question)
+            submit_prompt(question, st.session_state.session_id)
 
     # Display chat history
     for message in st.session_state.messages:
@@ -176,7 +183,7 @@ if __name__ == "__main__":
 
     # Handle user input
     if prompt := st.chat_input("How can I help you?"):
-        submit_prompt(prompt)
+        submit_prompt(prompt, st.session_state.session_id)
 
     # Clear chat history button
     if st.sidebar.button("Clear Chat History"):
