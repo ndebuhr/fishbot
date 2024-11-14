@@ -112,6 +112,8 @@ def generate_response(prompt):
     return html_response, None
 
 def submit_prompt(prompt):
+    with st.chat_message("user"):
+        st.markdown(prompt)
     st.session_state.messages.append({
         "role": "user",
         "content": prompt,
@@ -146,6 +148,19 @@ if __name__ == "__main__":
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
+    # Suggested questions
+    st.write("Get started with some suggested questions:")
+    cols = st.columns(3)
+    for i, question in enumerate(SUGGESTED_QUESTIONS):
+        col_idx = i % 3
+        # Disable suggested questions if a prompt has been submitted
+        if cols[col_idx].button(
+            question,
+            key=f"suggested_{i}",
+            disabled=len(st.session_state.messages) > 0,
+        ):
+            submit_prompt(question)
+
     # Display chat history
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
@@ -155,15 +170,6 @@ if __name__ == "__main__":
                 st.html(message["content"])
             if message["image"]:
                 st.image(message["image"]["src"], caption=message["image"]["alt"])
-
-    # Suggested questions input (if the history is empty)
-    if not st.session_state.messages:
-        st.write("Get started with some suggested questions:")
-        cols = st.columns(3)
-        for i, question in enumerate(SUGGESTED_QUESTIONS):
-            col_idx = i % 3
-            if cols[col_idx].button(question, key=f"suggested_{i}"):
-                submit_prompt(question)
 
     # Handle user input
     if prompt := st.chat_input("How can I help you?"):
