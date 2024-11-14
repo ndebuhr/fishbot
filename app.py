@@ -166,10 +166,12 @@ if __name__ == "__main__":
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
             if message["image"]:
-                st.image(
+                # Keep image at 1/3 width, but expandable to full screen
+                image_cols = st.columns(3)
+                image_cols[0].image(
                     image=message["image"]["src"],
                     caption=message["image"]["alt"],
-                    width=300
+                    use_container_width=True,
                 )
 
     # Handle user input
