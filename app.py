@@ -169,7 +169,11 @@ if __name__ == "__main__":
             else:
                 st.html(message["content"])
             if message["image"]:
-                st.image(message["image"]["src"], caption=message["image"]["alt"])
+                st.image(
+                    image=message["image"]["src"],
+                    caption=message["image"]["alt"],
+                    width=300
+                )
 
     # Handle user input
     if prompt := st.chat_input("How can I help you?"):
