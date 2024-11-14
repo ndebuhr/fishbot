@@ -16,7 +16,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the rest of the application
-COPY . .
+COPY src/*.py ./
 
 # Expose port 8080 (non-default port)
 EXPOSE 8080
@@ -24,6 +24,9 @@ EXPOSE 8080
 # Set environment variables
 ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8
+ENV STREAMLIT_SERVER_PORT=8080
+ENV STREAMLIT_SERVER_ADDRESS=0.0.0.0
+ENV STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
 
 # Command to run the application
-CMD ["streamlit", "run", "app.py", "--server.address", "0.0.0.0", "--server.port", "8080", "--browser.gatherUsageStats", "false"]
+CMD ["streamlit", "run", "app.py"]

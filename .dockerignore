@@ -1,7 +1,0 @@
-venv/
-__pycache__/
-
-skaffold.yaml
-resources/
-
-README.md
