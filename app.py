@@ -1,5 +1,4 @@
 import os
-
 import markdown
 import streamlit as st
 
@@ -26,16 +25,15 @@ Answer:
 {}
 """
 
+SUGGESTED_QUESTIONS = [
+    "What does a Rainbow Trout look like?",
+    "What is a fly reel and what is it made of?",
+    "Is a fishing license required in Texas?"
+]
+
 DATASTORE_STATIC_HOST = os.getenv("DATASTORE_STATIC_HOST")
 
-st.set_page_config(
-    page_title="Fishbot",
-    page_icon="🎣",
-    layout="wide"
-)
-st.title('Fishbot')
-
-def html_response_with_sources(response):
+def format_html_response_with_sources(response):
     """Mark up the response text as HTML, including simple numbered citations."""
     text = response.text
     metadata = response.candidates[0].grounding_metadata
@@ -88,60 +86,96 @@ def html_response_with_sources(response):
 
     return f"{html_content}{source_text}"
 
-# Initialize chat history in session state if it doesn't exist
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-
-# Display chat messages from history
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.html(message["content"])
-
-# Accept user input
-if prompt := st.chat_input("How can I help you?"):
-    # Display user message in chat message container
-    with st.chat_message("user"):
-        st.markdown(prompt)
-
-    # Add user message to chat history
-    st.session_state.messages.append({"role": "user", "content": prompt})
-
+def generate_response(prompt):
+    """Generate a response and handle images for a given prompt."""
     # Generate AI response
-    with st.chat_message("assistant"):
-        with st.spinner("Thinking..."):
-            # Try different generation strategies in sequence
-            # Since the multiturn is always called, the session integrity is maintained
-            generation_strategies = [
-                multiturn_generate,
-                singleturn_generate,
-                generic_generate
-            ]
+    generation_strategies = [
+        multiturn_generate,
+        singleturn_generate,
+        generic_generate
+    ]
 
-            for strategy in generation_strategies:
-                response = strategy(prompt)
-                # If the response is grounded, we can break out of the loop
-                if len(response.candidates[0].grounding_metadata.grounding_supports) > 0:
-                    break
+    for strategy in generation_strategies:
+        response = strategy(prompt)
+        if len(response.candidates[0].grounding_metadata.grounding_supports) > 0:
+            break
 
-    # Add assistant response to chat history
-    html_response = html_response_with_sources(response)
-    st.html(html_response)
-    st.session_state.messages.append({"role": "assistant", "content": html_response})
+    # Format response as HTML
+    html_response = format_html_response_with_sources(response)
 
     # Check if the response could use an image
     if "yes" in generic_generate(IMAGE_CHECK_PROMPT.format(prompt, response.text)).text.lower():
-        # Search for an image related to the user's question
         query = generic_generate(IMAGE_QUERY_PROMPT.format(prompt, response.text)).text
         top_result = top_pexels_result(query)
-        st.image(top_result["src"]["original"], caption=top_result["alt"])
+        return html_response, top_result
 
-# Add a button to clear chat history
-if st.sidebar.button("Clear Chat History"):
-    st.session_state.messages = []
+    return html_response, None
+
+def submit_prompt(prompt):
+    st.session_state.messages.append({
+        "role": "user",
+        "content": prompt,
+        "image": None
+    })
+
+    with st.chat_message("assistant"):
+        with st.spinner("Thinking..."):
+            html_response, image_result = generate_response(prompt)
+
+    st.session_state.messages.append({
+        "role": "assistant",
+        "content": html_response,
+        "image": {
+            "src": image_result["src"]["original"],
+            "alt": image_result["alt"]
+        } if image_result else None
+    })
+
     st.rerun()
 
-# Display current chat state in sidebar for debugging (optional)
-with st.sidebar:
-    st.subheader("Debug Info")
-    st.write("Current chat state:")
-    st.json(st.session_state.messages)
+
+if __name__ == "__main__":
+    st.set_page_config(
+        page_title="Fishbot",
+        page_icon="🎣",
+        layout="wide"
+    )
+    st.title('Fishbot')
+
+    # Initialize chat history
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
+
+    # Display chat history
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            if message["role"] == "user":
+                st.markdown(message["content"])
+            else:
+                st.html(message["content"])
+            if message["image"]:
+                st.image(message["image"]["src"], caption=message["image"]["alt"])
+
+    # Suggested questions input (if the history is empty)
+    if not st.session_state.messages:
+        st.write("Get started with some suggested questions:")
+        cols = st.columns(3)
+        for i, question in enumerate(SUGGESTED_QUESTIONS):
+            col_idx = i % 3
+            if cols[col_idx].button(question, key=f"suggested_{i}"):
+                submit_prompt(question)
+
+    # Handle user input
+    if prompt := st.chat_input("How can I help you?"):
+        submit_prompt(prompt)
+
+    # Clear chat history button
+    if st.sidebar.button("Clear Chat History"):
+        st.session_state.messages = []
+        st.rerun()
+
+    # Debug info
+    with st.sidebar:
+        st.subheader("Debug Info")
+        st.write("Current chat state:")
+        st.json(st.session_state.messages)
