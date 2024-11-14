@@ -1,4 +1,3 @@
 google-cloud-aiplatform
-markdown
 requests
 streamlit

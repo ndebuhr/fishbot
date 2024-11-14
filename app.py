@@ -1,8 +1,7 @@
 import os
-import markdown
 import streamlit as st
 
-from generate import generic_generate, multiturn_generate, singleturn_generate
+from generate import generic_generate, google_search_generate, multiturn_generate, singleturn_generate
 from pexels import top_pexels_result
 
 IMAGE_CHECK_PROMPT = """
@@ -33,8 +32,8 @@ SUGGESTED_QUESTIONS = [
 
 DATASTORE_STATIC_HOST = os.getenv("DATASTORE_STATIC_HOST")
 
-def format_html_response_with_sources(response):
-    """Mark up the response text as HTML, including simple numbered citations."""
+def add_sources(response):
+    """Add simple numbered citations to the response."""
     text = response.text
     metadata = response.candidates[0].grounding_metadata
 
@@ -45,7 +44,12 @@ def format_html_response_with_sources(response):
     # First pass: collect sources in order of appearance
     for support in metadata.grounding_supports:
         chunk_idx = support.grounding_chunk_indices[0]
-        source = metadata.grounding_chunks[chunk_idx].retrieved_context
+        if metadata.grounding_chunks[chunk_idx].retrieved_context:
+            source = metadata.grounding_chunks[chunk_idx].retrieved_context
+        elif metadata.grounding_chunks[chunk_idx].web:
+            source = metadata.grounding_chunks[chunk_idx].web
+        else:
+            raise ValueError("Encountered an unexpected grounding chunk")
 
         if source.title not in source_numbers:
             source_numbers[source.title] = len(sources) + 1
@@ -61,30 +65,26 @@ def format_html_response_with_sources(response):
     # Second pass: insert citations
     for support in supports:
         chunk_idx = support.grounding_chunk_indices[0]
-        source = metadata.grounding_chunks[chunk_idx].retrieved_context
+        source = metadata.grounding_chunks[chunk_idx].retrieved_context if metadata.grounding_chunks[chunk_idx].retrieved_context else metadata.grounding_chunks[chunk_idx].web
         citation_number = source_numbers[source.title]
 
         start = support.segment.start_index if hasattr(support.segment, 'start_index') else 0
         end = support.segment.end_index
         supported_text = support.segment.text
 
-        citation = f"{supported_text}<sup>[{citation_number}]</sup>"
+        citation = f"{supported_text}[{citation_number}]"
         text = text[:start] + citation + text[end:]
 
-    # Convert markdown to HTML
-    # Not sure if the markdown will ever use advanced "extra" features, but it's enabled just in case
-    md = markdown.Markdown(extensions=['extra'])
-    html_content = md.convert(text)
-
     # Add source list at the bottom
-    source_text = "<p>"
+    source_text = ""
     if sources:
         for i, source in enumerate(sources, 1):
-            filename = source.uri.split('/')[-1]
-            source_text += f'<a href="{DATASTORE_STATIC_HOST}/{filename}" target="_blank">[{i}] {source.title}</a><br>'
-    source_text += "</p>"
+            # Remove gs://.../ and https://.../ to get the absolute path
+            filepath = "/".join(source.uri.split('/')[3:])
+            url = f"{DATASTORE_STATIC_HOST}/{filepath}" if source.uri[:5] == "gs://" else source.uri
+            source_text += f'\n\n[[{i}] {source.title}]({url})'
 
-    return f"{html_content}{source_text}"
+    return f"{text}{source_text}"
 
 def generate_response(prompt):
     """Generate a response and handle images for a given prompt."""
@@ -92,6 +92,7 @@ def generate_response(prompt):
     generation_strategies = [
         multiturn_generate,
         singleturn_generate,
+        google_search_generate,
         generic_generate
     ]
 
@@ -100,16 +101,15 @@ def generate_response(prompt):
         if len(response.candidates[0].grounding_metadata.grounding_supports) > 0:
             break
 
-    # Format response as HTML
-    html_response = format_html_response_with_sources(response)
+    response_with_sources = add_sources(response)
 
     # Check if the response could use an image
     if "yes" in generic_generate(IMAGE_CHECK_PROMPT.format(prompt, response.text)).text.lower():
         query = generic_generate(IMAGE_QUERY_PROMPT.format(prompt, response.text)).text
         top_result = top_pexels_result(query)
-        return html_response, top_result
+        return response_with_sources, top_result
 
-    return html_response, None
+    return response_with_sources, None
 
 def submit_prompt(prompt):
     with st.chat_message("user"):
@@ -122,11 +122,11 @@ def submit_prompt(prompt):
 
     with st.chat_message("assistant"):
         with st.spinner("Thinking..."):
-            html_response, image_result = generate_response(prompt)
+            response, image_result = generate_response(prompt)
 
     st.session_state.messages.append({
         "role": "assistant",
-        "content": html_response,
+        "content": response,
         "image": {
             "src": image_result["src"]["original"],
             "alt": image_result["alt"]
@@ -164,10 +164,7 @@ if __name__ == "__main__":
     # Display chat history
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
-            if message["role"] == "user":
-                st.markdown(message["content"])
-            else:
-                st.html(message["content"])
+            st.markdown(message["content"])
             if message["image"]:
                 st.image(
                     image=message["image"]["src"],

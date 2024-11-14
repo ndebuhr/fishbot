@@ -11,11 +11,17 @@ DATASTORE_ID = os.getenv("DATASTORE_ID")
 
 credentials, project_id = default()
 
-TOOLS = [
+CUSTOM_TOOLS = [
     Tool.from_retrieval(
         retrieval=grounding.Retrieval(
             source=grounding.VertexAISearch(datastore=f"projects/{project_id}/locations/{DATASTORE_LOCATION}/collections/default_collection/dataStores/{DATASTORE_ID}"),
         )
+    ),
+]
+
+GOOGLE_TOOLS = [
+    Tool.from_google_search_retrieval(
+        google_search_retrieval=grounding.GoogleSearchRetrieval()
     ),
 ]
 
@@ -26,14 +32,18 @@ GENERATION_CONFIG = {
 }
 
 vertexai.init()
-model = GenerativeModel(
+custom_model = GenerativeModel(
     "gemini-1.5-flash-002",
-    tools=TOOLS,
+    tools=CUSTOM_TOOLS,
+)
+google_search_model = GenerativeModel(
+    "gemini-1.5-flash-002",
+    tools=GOOGLE_TOOLS,
 )
 generic_model = GenerativeModel(
     "gemini-1.5-flash-002",
 )
-chat = model.start_chat()
+chat = custom_model.start_chat()
 
 def multiturn_generate(prompt):
     return chat.send_message(
@@ -42,8 +52,15 @@ def multiturn_generate(prompt):
     )
 
 def singleturn_generate(prompt):
-    singleturn_chat = model.start_chat()
+    singleturn_chat = custom_model.start_chat()
     return singleturn_chat.send_message(
+        [prompt],
+        generation_config=GENERATION_CONFIG
+    )
+
+def google_search_generate(prompt):
+    google_search_chat = google_search_model.start_chat()
+    return google_search_chat.send_message(
         [prompt],
         generation_config=GENERATION_CONFIG
     )
