@@ -10,6 +10,7 @@
     4. Ungrounded responses (least preferred)
 * Custom grounding citations rendering
 * EDW reporting on sessions, prompts, and responses
+* Aggregate LLM request rate limiting (abuse prevention and cost control)
 
 ## Usage
 
@@ -21,6 +22,7 @@
 | PEXELS_API_KEY | API key from pexels.com, for use in dynamic image rendering |
 | REPORTING_DATASET | BigQuery dataset for storing usage reporting data (e.g., "fishbot_reporting") |
 | REPORTING_TABLE | BigQuery table for storing usage reporting data, which will be created if it does not already exist (e.g., "responses") |
+| REDIS_URL | IP or hostname for the Redis instance which is used for application-level LLM request rate limiting (e.g., "redis://localhost:6379")
 
 ## Infrastructure
 
@@ -38,3 +40,4 @@ The infrastructure for [fishbot.com](https://fishbot.com) includes:
     1. Rate-based 30-minute ban for exceeding 60 requests/minute
         * Enforcement key is the concatenation of IP address and HTTP path
 1. BigQuery dataset for prompt-response usage reporting
+1. A small Memorystore for Redis instance to back aggregate LLM request rate-limiting
