@@ -26,7 +26,7 @@
 
 ## Infrastructure
 
-The infrastructure for [fishbot.com](https://fishbot.com) includes:
+The architecture includes:
 1. A Cloud Run service with:
     1. "Internal + load balancer" ingress
     1. Custom 3600s HTTP request timeout (to reduce websocket-reconnection-related issues)
